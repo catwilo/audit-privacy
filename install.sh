@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# audit-privacy/install.sh — idempotent installer
-#
-# usage:
-#   bash install.sh          install
-#   bash install.sh verify   verify only (no changes)
-
 set -Eeuo pipefail
 
 if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then
@@ -51,8 +45,23 @@ else
     die "no writable bin dir found"
 fi
 
-ln -sf "$AUDIT_SH" "$BINDIR/audit-privacy"
-ok "linked audit-privacy → $BINDIR/audit-privacy"
+_install_atomic() {
+    local src="$1" dst="$2"
+    local dstdir tmp
+    dstdir="$(dirname "$dst")"
+    mkdir -p "$dstdir"
+    tmp="$(mktemp -d "$dstdir/.audit-tmp.XXXXXX")/audit-privacy"
+    if cp -f "$src" "$tmp"; then
+        chmod +x "$tmp"
+        rm -f "$dst"
+        mv -f "$tmp" "$dst" && ok "installed $dst" || die "failed to move $tmp to $dst"
+    else
+        die "failed to copy $src to $tmp"
+    fi
+    rm -rf "$(dirname "$tmp")" 2>/dev/null || true
+}
+
+_install_atomic "$AUDIT_SH" "$BINDIR/audit-privacy"
 
 _BEG='# >>> audit-privacy >>>'
 _END='# <<< audit-privacy <<<'
